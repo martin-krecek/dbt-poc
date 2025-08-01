@@ -1,0 +1,5 @@
+version: 2
+sources:
+  - name: adrez_poc
+    tables:
+      - name: data
