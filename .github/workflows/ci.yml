@@ -1,0 +1,65 @@
+name: CI - dbt Tests and Validation
+
+on:
+  pull_request:
+    branches: [ main, staging ]
+    paths:
+      - 'adrez_dbt/**'
+      - '.github/workflows/**'
+
+jobs:
+  dbt-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install dbt
+      run: |
+        pip install dbt-core dbt-sqlserver
+        
+    - name: Create profiles.yml
+      run: |
+        mkdir -p ~/.dbt
+        cat > ~/.dbt/profiles.yml << EOF
+        adrez_poc:
+          target: dev
+          outputs:
+            dev:
+              type: sqlserver
+              driver: 'ODBC Driver 17 for SQL Server'
+              server: ${{ secrets.DBT_SERVER }}
+              port: 1433
+              database: ${{ secrets.DBT_DATABASE }}
+              schema: ${{ secrets.DBT_SCHEMA }}
+              user: ${{ secrets.DBT_USER }}
+              password: ${{ secrets.DBT_PASSWORD }}
+              threads: 4
+              keepalives_idle: 0
+        EOF
+        
+    - name: dbt deps
+      run: |
+        cd adrez_dbt/adrez_poc
+        dbt deps
+        
+    - name: dbt debug
+      run: |
+        cd adrez_dbt/adrez_poc
+        dbt debug
+        
+    - name: dbt compile
+      run: |
+        cd adrez_dbt/adrez_poc
+        dbt compile
+        
+    - name: dbt test
+      run: |
+        cd adrez_dbt/adrez_poc
+        dbt test 

@@ -1,0 +1,81 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'adrez_dbt/**'
+
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    environment: production  # This requires manual approval in GitHub
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install dbt
+      run: |
+        pip install dbt-core dbt-sqlserver
+        
+    - name: Create profiles.yml for production
+      run: |
+        mkdir -p ~/.dbt
+        cat > ~/.dbt/profiles.yml << EOF
+        adrez_poc:
+          target: prod
+          outputs:
+            prod:
+              type: sqlserver
+              driver: 'ODBC Driver 17 for SQL Server'
+              server: ${{ secrets.DBT_PROD_SERVER }}
+              port: 1433
+              database: ${{ secrets.DBT_PROD_DATABASE }}
+              schema: ${{ secrets.DBT_PROD_SCHEMA }}
+              user: ${{ secrets.DBT_PROD_USER }}
+              password: ${{ secrets.DBT_PROD_PASSWORD }}
+              threads: 4
+              keepalives_idle: 0
+        EOF
+        
+    - name: dbt deps
+      run: |
+        cd adrez_dbt/adrez_poc
+        dbt deps
+        
+    - name: dbt seed
+      run: |
+        cd adrez_dbt/adrez_poc
+        dbt seed --target prod
+        
+    - name: dbt run
+      run: |
+        cd adrez_dbt/adrez_poc
+        dbt run --target prod
+        
+    - name: dbt test
+      run: |
+        cd adrez_dbt/adrez_poc
+        dbt test --target prod
+        
+    - name: Generate docs
+      run: |
+        cd adrez_dbt/adrez_poc
+        dbt docs generate --target prod
+        
+    - name: Upload docs to Azure Storage (optional)
+      run: |
+        echo "📚 Documentation generated successfully!"
+        echo "Consider uploading to Azure Storage for team access"
+        
+    - name: Notify success
+      run: |
+        echo "🎉 Production deployment completed successfully!"
+        echo "Models deployed to production environment"
+        echo "Please verify the deployment in your database" 
