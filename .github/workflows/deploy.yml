@@ -1,15 +1,19 @@
-name: Deploy to Production
+name: dbt Deploy
 
 on:
   push:
     branches: [ main ]
     paths:
       - 'adrez_dbt/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'adrez_dbt/**'
 
 jobs:
-  deploy-production:
+  dbt-deploy:
     runs-on: ubuntu-latest
-    environment: production  # This requires manual approval in GitHub
+    environment: poc
     
     steps:
     - name: Checkout code
@@ -24,7 +28,7 @@ jobs:
       run: |
         pip install dbt-core dbt-sqlserver
         
-    - name: Create profiles.yml for production
+    - name: Create profiles.yml
       run: |
         mkdir -p ~/.dbt
         cat > ~/.dbt/profiles.yml << EOF
@@ -34,12 +38,12 @@ jobs:
             prod:
               type: sqlserver
               driver: 'ODBC Driver 17 for SQL Server'
-              server: ${{ secrets.DBT_PROD_SERVER }}
+              server: ${{ secrets.SERVER }}
               port: 1433
-              database: ${{ secrets.DBT_PROD_DATABASE }}
-              schema: ${{ secrets.DBT_PROD_SCHEMA }}
-              user: ${{ secrets.DBT_PROD_USER }}
-              password: ${{ secrets.DBT_PROD_PASSWORD }}
+              database: ${{ secrets.DATABASE }}
+              schema: ${{ secrets.SCHEMA }}
+              user: ${{ secrets.USER }}
+              password: ${{ secrets.PASSWORD }}
               threads: 4
               keepalives_idle: 0
         EOF
@@ -49,33 +53,48 @@ jobs:
         cd adrez_dbt/adrez_poc
         dbt deps
         
-    - name: dbt seed
+    - name: dbt debug
+      run: |
+        cd adrez_dbt/adrez_poc
+        dbt debug
+        
+    - name: dbt compile
+      run: |
+        cd adrez_dbt/adrez_poc
+        dbt compile
+        
+    - name: dbt test (PR only)
+      if: github.event_name == 'pull_request'
+      run: |
+        cd adrez_dbt/adrez_poc
+        dbt test
+        
+    - name: dbt seed (Deploy only)
+      if: github.event_name == 'push'
       run: |
         cd adrez_dbt/adrez_poc
         dbt seed --target prod
         
-    - name: dbt run
+    - name: dbt run (Deploy only)
+      if: github.event_name == 'push'
       run: |
         cd adrez_dbt/adrez_poc
         dbt run --target prod
         
-    - name: dbt test
+    - name: dbt test (Deploy only)
+      if: github.event_name == 'push'
       run: |
         cd adrez_dbt/adrez_poc
         dbt test --target prod
         
-    - name: Generate docs
+    - name: Generate docs (Deploy only)
+      if: github.event_name == 'push'
       run: |
         cd adrez_dbt/adrez_poc
         dbt docs generate --target prod
         
-    - name: Upload docs to Azure Storage (optional)
-      run: |
-        echo "📚 Documentation generated successfully!"
-        echo "Consider uploading to Azure Storage for team access"
-        
     - name: Notify success
+      if: github.event_name == 'push'
       run: |
-        echo "🎉 Production deployment completed successfully!"
-        echo "Models deployed to production environment"
-        echo "Please verify the deployment in your database" 
+        echo "🎉 Deployment completed successfully!"
+        echo "Models deployed to production environment" 
