@@ -15,6 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     environment: poc
     
+    env:
+      SERVER: adrez-poc-sqldb-server.database.windows.net
+      DATABASE: adrez-poc-sqldb
+      SCHEMA: adrez-poc
+      USER: martin.krecek
+      PASSWORD: ${{ secrets.PASSWORD }}
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -38,12 +45,12 @@ jobs:
             prod:
               type: sqlserver
               driver: 'ODBC Driver 17 for SQL Server'
-              server: ${{ secrets.SERVER }}
+              server: ${{ env.SERVER }}
               port: 1433
-              database: ${{ secrets.DATABASE }}
-              schema: ${{ secrets.SCHEMA }}
-              user: ${{ secrets.USER }}
-              password: ${{ secrets.PASSWORD }}
+              database: ${{ env.DATABASE }}
+              schema: ${{ env.SCHEMA }}
+              user: ${{ env.USER }}
+              password: ${{ env.PASSWORD }}
               threads: 4
               keepalives_idle: 0
         EOF
