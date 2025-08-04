@@ -15,6 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     environment: poc
     
+    env:
+      SERVER: adrez-poc-sqldb-server.database.windows.net
+      DATABASE: adrez-poc-sqldb
+      SCHEMA: adrez-poc
+      USER: martin.krecek
+      PASSWORD: ${{ secrets.PASSWORD }}
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -24,9 +31,27 @@ jobs:
       with:
         python-version: '3.9'
         
-    - name: Install dbt
+    - name: Install Microsoft ODBC Driver for SQL Server
       run: |
-        pip install dbt-core dbt-sqlserver
+        # Add Microsoft repository
+        curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+        curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+        
+        # Update package list
+        sudo apt-get update
+        
+        # Install ODBC Driver 17 for SQL Server
+        sudo ACCEPT_EULA=Y apt-get install -y msodbcsql17
+        
+        # Install unixODBC development headers (needed for pyodbc)
+        sudo apt-get install -y unixodbc-dev
+        
+        # Verify installation
+        odbcinst -q -d -n "ODBC Driver 17 for SQL Server"
+        
+    - name: Install dbt and dependencies
+      run: |
+        pip install dbt-core dbt-sqlserver pyodbc
         
     - name: Create profiles.yml
       run: |
@@ -38,12 +63,12 @@ jobs:
             prod:
               type: sqlserver
               driver: 'ODBC Driver 17 for SQL Server'
-              server: ${{ secrets.SERVER }}
+              server: ${{ env.SERVER }}
               port: 1433
-              database: ${{ secrets.DATABASE }}
-              schema: ${{ secrets.SCHEMA }}
-              user: ${{ secrets.USER }}
-              password: ${{ secrets.PASSWORD }}
+              database: ${{ env.DATABASE }}
+              schema: ${{ env.SCHEMA }}
+              user: ${{ env.USER }}
+              password: ${{ env.PASSWORD }}
               threads: 4
               keepalives_idle: 0
         EOF
