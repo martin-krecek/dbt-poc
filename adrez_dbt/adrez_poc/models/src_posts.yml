@@ -1,7 +1,5 @@
 version: 2
 sources:
   - name: adrez_poc
-    database: '[adrez-poc-sqldb]'
-    schema: adrez_poc
     tables:
       - name: data

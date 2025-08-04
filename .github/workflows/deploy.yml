@@ -17,7 +17,7 @@ jobs:
     
     env:
       SERVER: adrez-poc-sqldb-server.database.windows.net
-      DATABASE: '[adrez-poc-sqldb]'
+      DATABASE: adrez-poc-sqldb
       SCHEMA: adrez_poc
       USER: martin.krecek
       PASSWORD: ${{ secrets.PASSWORD }}
