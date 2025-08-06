@@ -1,0 +1,46 @@
+services:
+  dbt:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: adrez_dbt
+    volumes:
+      # Mount the profiles directory for dbt configuration
+      - ./profiles:/app/profiles
+      # Mount the dbt project for development (optional - comment out for production)
+      - ./adrez_dbt:/app/adrez_dbt
+      # Mount logs directory to persist logs
+      - ./logs:/app/logs
+    environment:
+      # Set dbt profiles directory
+      - DBT_PROFILES_DIR=/app/profiles
+      # You can add other environment variables here
+      # - DBT_PROJECT_DIR=/app/adrez_dbt/adrez_poc
+    working_dir: /app/adrez_dbt/adrez_poc
+    # Override the default command - useful for development
+    # command: tail -f /dev/null  # Keeps container running for interactive use
+    
+    # For production, you might want to run specific dbt commands:
+    # command: ["dbt", "run"]
+    
+    # For interactive development, you can use:
+    stdin_open: true
+    tty: true
+
+  # Optional: Add a database service if you want to run SQL Server locally
+  # Uncomment the section below if you want a local SQL Server instance
+  # sqlserver:
+  #   image: mcr.microsoft.com/mssql/server:2022-latest
+  #   container_name: adrez_sqlserver
+  #   environment:
+  #     - ACCEPT_EULA=Y
+  #     - MSSQL_SA_PASSWORD=YourStrong!Passw0rd
+  #     - MSSQL_PID=Express
+  #   ports:
+  #     - "1433:1433"
+  #   volumes:
+  #     - sqlserver_data:/var/opt/mssql
+  #   restart: unless-stopped
+
+# volumes:
+#   sqlserver_data:

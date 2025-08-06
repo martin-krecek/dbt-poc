@@ -1,0 +1,60 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'adrez_dbt/**'
+      - 'Dockerfile'
+      - 'requirements.txt'
+      - 'profiles/**'
+
+jobs:
+  deploy-to-azure:
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        
+    - name: Login to Azure Container Registry
+      run: |
+        az acr login --name ${{ secrets.ACR_NAME }}
+        
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64
+        push: true
+        tags: |
+          ${{ secrets.ACR_LOGIN_SERVER }}/adrez-dbt:latest
+          ${{ secrets.ACR_LOGIN_SERVER }}/adrez-dbt:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    - name: Verify deployment
+      run: |
+        echo "✅ Docker image pushed successfully!"
+        echo "🏷️  Tags: latest, ${{ github.sha }}"
+        echo "🎯 Registry: ${{ secrets.ACR_LOGIN_SERVER }}"
+        echo ""
+        echo "🚀 Next ADF run will use the updated image automatically!"
+        
+    - name: Optional - Trigger immediate ADF run
+      if: github.event.head_commit.message contains '[run-now]'
+      run: |
+        echo "🔄 Triggering immediate ADF pipeline run..."
+        # This would call ADF REST API to trigger pipeline
+        # Uncomment and configure if you want immediate runs
+        # az rest --method post \
+        #   --url "https://management.azure.com/subscriptions/${{ secrets.SUBSCRIPTION_ID }}/resourceGroups/${{ secrets.RESOURCE_GROUP }}/providers/Microsoft.DataFactory/factories/${{ secrets.ADF_NAME }}/pipelines/dbt-container-runner/createRun?api-version=2018-06-01"
